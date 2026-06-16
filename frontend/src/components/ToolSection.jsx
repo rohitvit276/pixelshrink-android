@@ -6,6 +6,8 @@ import RemoveBgPanel from './panels/RemoveBgPanel';
 import CropPanel from './panels/CropPanel';
 import PdfToWordPanel from './panels/PdfToWordPanel';
 import WordToPdfPanel from './panels/WordToPdfPanel';
+import VideoCompressPanel from './panels/VideoCompressPanel';
+import VideoToMp3Panel from './panels/VideoToMp3Panel';
 
 export default function ToolSection({ activeTool, onToolChange }) {
   const tool = TOOLS.find((t) => t.key === activeTool) || TOOLS[0];
@@ -45,6 +47,8 @@ export default function ToolSection({ activeTool, onToolChange }) {
         {activeTool === 'crop' && <CropPanel />}
         {activeTool === 'pdf2word' && <PdfToWordPanel />}
         {activeTool === 'word2pdf' && <WordToPdfPanel />}
+        {activeTool === 'compressvideo' && <VideoCompressPanel />}
+        {activeTool === 'video2mp3' && <VideoToMp3Panel />}
       </div>
     </section>
   );
