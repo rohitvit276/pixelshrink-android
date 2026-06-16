@@ -1,24 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Header from '../components/Header';
-import HeroResizer from '../components/HeroResizer';
-import UserFavorites from '../components/UserFavorites';
-import ChromeExtensionBanner from '../components/ChromeExtensionBanner';
+import ToolSection from '../components/ToolSection';
 import InfoSections from '../components/InfoSections';
 import FAQSection from '../components/FAQSection';
-import MobileAppSection from '../components/MobileAppSection';
 import Footer from '../components/Footer';
 
 export default function HomePage() {
+  const [activeTool, setActiveTool] = useState('shrink'); // 'shrink' | 'removebg'
+
   return (
     <div className="min-h-screen bg-[#fafaf7]">
-      <Header />
+      <Header onToolSelect={setActiveTool} />
       <main>
-        <HeroResizer />
-        <UserFavorites />
-        <ChromeExtensionBanner />
+        <ToolSection activeTool={activeTool} onToolChange={setActiveTool} />
         <InfoSections />
         <FAQSection />
-        <MobileAppSection />
       </main>
       <Footer />
     </div>

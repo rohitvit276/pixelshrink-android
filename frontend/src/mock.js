@@ -1,49 +1,29 @@
 // Mock data for PixelShrink Studio (frontend-only)
 export const NAV_LINKS = [
-  { label: 'Shrink Image', href: '#shrink' },
-  { label: 'Squeeze PDF', href: '#pdf' },
-  { label: 'Video Squeezer', href: '#video' },
-  { label: 'Use Cases', href: '#usecases' },
-  { label: 'Pricing', href: '#pricing' },
-];
-
-export const USER_FAVORITES = [
-  {
-    title: 'Optimize for Instagram',
-    desc: 'Square, story & reel sizes preset.',
-    accent: 'from-pink-200 to-rose-100',
-    icon: 'Instagram',
-  },
-  {
-    title: 'Squeeze PDF Files',
-    desc: 'Shrink PDFs without losing detail.',
-    accent: 'from-amber-200 to-orange-100',
-    icon: 'FileText',
-  },
-  {
-    title: 'Pack for Social Media',
-    desc: 'Auto-fit every major platform.',
-    accent: 'from-emerald-200 to-teal-100',
-    icon: 'Share2',
-  },
+  { label: 'Shrink Image', href: '#tool', tool: 'shrink' },
+  { label: 'Remove Background', href: '#tool', tool: 'removebg' },
 ];
 
 export const FAQ_ITEMS = [
   {
-    q: 'Is this image shrinker really free?',
-    a: 'Yes. Every feature is free to use. You can shrink up to 3 photos per batch at no cost. Want to handle more? Unlock Pro for batch processing up to 10 images and a fully ad-free experience.',
+    q: 'Is this tool really free?',
+    a: 'Yes. Both shrinking and background removal are completely free. You can process up to 3 photos per batch.',
   },
   {
-    q: 'Can I shrink images on my phone?',
-    a: 'Absolutely. PixelShrink works directly in any mobile browser. For the smoothest experience, grab our free apps on the App Store and Google Play.',
+    q: 'Can I use this on my phone?',
+    a: 'Absolutely. PixelShrink works directly in any modern mobile browser — no app needed.',
   },
   {
     q: 'Will shrinking reduce image quality?',
     a: 'We use adaptive sampling under the hood to preserve detail. Some loss is unavoidable when downsizing, but our pipeline keeps your photos sharp and clean.',
   },
   {
+    q: 'How does background removal work?',
+    a: 'A lightweight AI model runs directly in your browser to detect the subject and erase the background. Your photo never leaves your device.',
+  },
+  {
     q: 'Which file formats are supported?',
-    a: 'JPG, JPEG, PNG, WEBP, HEIC, BMP and GIF — and you can convert between them while you shrink.',
+    a: 'JPG, JPEG, PNG, WEBP, BMP and GIF — backgrounds are removed and saved as transparent PNG.',
   },
   {
     q: 'Are my files safe?',
@@ -56,13 +36,7 @@ export const USE_CASES = [
   'Attaching lighter images to emails',
   'Posting pictures on blogs and forums',
   'Optimising visuals for Facebook, Instagram, LinkedIn, Pinterest and X',
-  'Preparing photos for classified ads (Craigslist, OLX, Gumtree, OfferUp)',
-  'Creating e-commerce listings on eBay, Etsy, Amazon and Allegro',
+  'Creating product photos with transparent backgrounds',
+  'Building e-commerce listings on eBay, Etsy, Amazon and Allegro',
   'Reducing image weight in Word, PDF, PowerPoint and Keynote documents',
 ];
-
-export const FOOTER_LINKS = {
-  Product: ['Shrink Image', 'Squeeze PDF', 'Video Squeezer', 'Chrome Extension'],
-  Company: ['About', 'Blog', 'Pricing', 'Contact'],
-  Legal: ['Terms of Use', 'Privacy Policy', 'Cookies'],
-};

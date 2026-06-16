@@ -1,5 +1,8 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Upload, Image as ImageIcon, X, Download, Loader2, RefreshCcw, Lock, ShieldCheck, Maximize2, Crop, Scissors, Square } from 'lucide-react';
+import {
+  Upload, X, Download, Loader2, RefreshCcw, ShieldCheck,
+  Maximize2, Crop, Scissors, Square, Eraser, Lock, Image as ImageIcon,
+} from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -11,17 +14,20 @@ import { toast } from 'sonner';
 const MAX_FILES = 3;
 const ACCEPT = 'image/jpeg,image/jpg,image/png,image/webp,image/bmp,image/gif';
 
-export default function HeroResizer() {
-  const [files, setFiles] = useState([]); // [{id, file, src, w, h, originalSize}]
-  const [mode, setMode] = useState('percentage'); // 'percentage' | 'dimensions'
+export default function ToolSection({ activeTool, onToolChange }) {
+  const [files, setFiles] = useState([]);
+  // Shrink controls
+  const [mode, setMode] = useState('percentage');
   const [percentage, setPercentage] = useState(50);
   const [width, setWidth] = useState('');
   const [height, setHeight] = useState('');
   const [keepAspect, setKeepAspect] = useState(true);
-  const [fitMode, setFitMode] = useState('stretch'); // stretch | crop | fit
+  const [fitMode, setFitMode] = useState('stretch');
   const [fitBg, setFitBg] = useState('white');
+  // Shared
   const [processing, setProcessing] = useState(false);
-  const [results, setResults] = useState([]); // [{id, name, url, w, h, size}]
+  const [progressLabel, setProgressLabel] = useState('');
+  const [results, setResults] = useState([]);
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef(null);
 
@@ -33,7 +39,7 @@ export default function HeroResizer() {
     }
     const remaining = MAX_FILES - files.length;
     if (list.length > remaining) {
-      toast.warning(`You can shrink up to ${MAX_FILES} files at once. Unlock Pro for more.`);
+      toast.warning(`You can process up to ${MAX_FILES} files at once.`);
     }
     const accepted = list.slice(0, remaining);
 
@@ -86,10 +92,11 @@ export default function HeroResizer() {
   };
 
   const resetAll = () => {
-    setFiles([]); setResults([]); setPercentage(50); setWidth(''); setHeight(''); setKeepAspect(true); setMode('percentage'); setFitMode('stretch');
+    setFiles([]); setResults([]); setPercentage(50);
+    setWidth(''); setHeight(''); setKeepAspect(true);
+    setMode('percentage'); setFitMode('stretch');
   };
 
-  // Aspect ratio sync
   const onWidthChange = (val) => {
     setWidth(val);
     if (keepAspect && files[0] && val) {
@@ -111,7 +118,8 @@ export default function HeroResizer() {
     return `${(b / (1024 * 1024)).toFixed(2)} MB`;
   };
 
-  const processOne = (item) =>
+  // Shrink logic --------------------------------------------------
+  const shrinkOne = (item) =>
     new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
@@ -146,7 +154,6 @@ export default function HeroResizer() {
           }
           ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
         } else if (fitMode === 'fit') {
-          // Fill background then fit image
           if (fitBg === 'white') ctx.fillStyle = '#ffffff';
           else if (fitBg === 'black') ctx.fillStyle = '#000000';
           else ctx.fillStyle = '#94a3b8';
@@ -178,6 +185,7 @@ export default function HeroResizer() {
               h: targetH,
               size: blob.size,
               originalSize: item.originalSize,
+              kind: 'shrink',
             });
           },
           mime,
@@ -188,57 +196,111 @@ export default function HeroResizer() {
     });
 
   const onShrink = async () => {
-    if (!files.length) {
-      toast.error('Add at least one image first.');
-      return;
-    }
-    setProcessing(true);
-    setResults([]);
+    if (!files.length) { toast.error('Add at least one image first.'); return; }
+    setProcessing(true); setResults([]); setProgressLabel('Shrinking…');
     try {
       const out = [];
       for (const f of files) {
         // eslint-disable-next-line no-await-in-loop
-        const r = await processOne(f);
+        const r = await shrinkOne(f);
         out.push(r);
       }
       setResults(out);
-      toast.success(`Shrunk ${out.length} image${out.length > 1 ? 's' : ''} successfully.`);
+      toast.success(`Shrunk ${out.length} image${out.length > 1 ? 's' : ''}.`);
     } catch (err) {
       toast.error('Something went wrong while shrinking.');
     } finally {
-      setProcessing(false);
+      setProcessing(false); setProgressLabel('');
     }
   };
 
+  // Remove Background logic ---------------------------------------
+  const removeBgOne = async (item) => {
+    const { removeBackground } = await import('@imgly/background-removal');
+    const resultBlob = await removeBackground(item.file);
+    const url = URL.createObjectURL(resultBlob);
+    const baseName = item.name.replace(/\.[^.]+$/, '');
+    return {
+      id: item.id,
+      name: `${baseName}-no-bg.png`,
+      url,
+      w: item.w,
+      h: item.h,
+      size: resultBlob.size,
+      originalSize: item.originalSize,
+      kind: 'removebg',
+    };
+  };
+
+  const onRemoveBg = async () => {
+    if (!files.length) { toast.error('Add at least one image first.'); return; }
+    setProcessing(true); setResults([]);
+    setProgressLabel('Loading AI model (first run downloads ~30MB)…');
+    try {
+      const out = [];
+      let idx = 0;
+      for (const f of files) {
+        idx += 1;
+        setProgressLabel(`Removing background ${idx}/${files.length}…`);
+        // eslint-disable-next-line no-await-in-loop
+        const r = await removeBgOne(f);
+        out.push(r);
+      }
+      setResults(out);
+      toast.success(`Background removed from ${out.length} image${out.length > 1 ? 's' : ''}.`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Background removal failed. Try a smaller image.');
+    } finally {
+      setProcessing(false); setProgressLabel('');
+    }
+  };
+
+  // Reset results when switching tools
+  useEffect(() => { setResults([]); }, [activeTool]);
   useEffect(() => () => results.forEach((r) => URL.revokeObjectURL(r.url)), [results]);
 
-  return (
-    <section id="shrink" className="relative">
-      {/* Top promo banner */}
-      <div className="bg-slate-900 text-stone-100 text-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-4">
-          <p className="hidden sm:block"><span className="font-semibold text-white">Speed up your workflow</span> with our mobile app.</p>
-          <p className="sm:hidden font-semibold text-white">Get the mobile app</p>
-          <a href="#" className="inline-flex items-center gap-1.5 text-emerald-300 hover:text-emerald-200 font-semibold">Get App →</a>
-        </div>
-      </div>
+  const headline = activeTool === 'shrink'
+    ? 'Image Shrinker — resize images online, free.'
+    : 'Remove Background — instant, AI-powered, free.';
+  const subhead = activeTool === 'shrink'
+    ? 'Shrink JPG, PNG, WEBP and more without losing crispness. Perfect for socials, email and the web.'
+    : 'Erase backgrounds in one click. Get crisp transparent PNGs ready for product shots, designs and social posts.';
 
+  return (
+    <section id="tool" className="relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 md:pt-14 pb-6">
         <div className="flex flex-col items-center text-center mb-8">
           <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-emerald-700 bg-emerald-100 rounded-full px-3 py-1">
             <ShieldCheck className="w-3.5 h-3.5" /> 100% browser-side processing
           </span>
           <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-extrabold text-slate-900 mt-5 max-w-3xl leading-[1.05]">
-            Image Shrinker — resize images online, free.
+            {headline}
           </h1>
-          <p className="text-slate-600 mt-4 max-w-xl">Shrink JPG, PNG, WEBP, HEIC and more without losing crispness. Perfect for socials, email and the web.</p>
+          <p className="text-slate-600 mt-4 max-w-xl">{subhead}</p>
+
+          {/* Tool switcher */}
+          <div className="mt-7 inline-flex bg-white border border-stone-200 rounded-2xl p-1.5 shadow-sm">
+            <button
+              onClick={() => onToolChange('shrink')}
+              className={`px-5 py-2.5 rounded-xl text-sm font-semibold inline-flex items-center gap-2 transition-all ${activeTool === 'shrink' ? 'bg-emerald-600 text-white shadow' : 'text-slate-600 hover:text-slate-900'}`}
+            >
+              <Scissors className="w-4 h-4" /> Shrink Image
+            </button>
+            <button
+              onClick={() => onToolChange('removebg')}
+              className={`px-5 py-2.5 rounded-xl text-sm font-semibold inline-flex items-center gap-2 transition-all ${activeTool === 'removebg' ? 'bg-emerald-600 text-white shadow' : 'text-slate-600 hover:text-slate-900'}`}
+            >
+              <Eraser className="w-4 h-4" /> Remove Background
+            </button>
+          </div>
         </div>
 
         <div className="grid lg:grid-cols-5 gap-6">
           {/* Upload + previews */}
           <div className="lg:col-span-3 bg-white border border-stone-200 rounded-3xl p-5 md:p-7 shadow-sm relative">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-sm text-slate-600">You can shrink up to <span className="font-semibold text-slate-900">{MAX_FILES}</span> files. <a href="#" className="text-emerald-700 font-semibold hover:underline">Unlock Pro</a> for 10 at once — ad-free.</p>
+              <p className="text-sm text-slate-600">You can process up to <span className="font-semibold text-slate-900">{MAX_FILES}</span> files at once.</p>
               {files.length > 0 && (
                 <button onClick={resetAll} className="text-xs font-semibold text-slate-500 hover:text-slate-900 inline-flex items-center gap-1">
                   <RefreshCcw className="w-3.5 h-3.5" /> Reset
@@ -258,7 +320,7 @@ export default function HeroResizer() {
                   <Upload className="w-7 h-7 text-emerald-700" />
                 </div>
                 <p className="font-display text-xl font-bold text-slate-900">Drop images here or click to browse</p>
-                <p className="text-slate-500 text-sm mt-1">JPG · PNG · WEBP · HEIC · BMP · GIF — up to {MAX_FILES} files</p>
+                <p className="text-slate-500 text-sm mt-1">JPG · PNG · WEBP · BMP · GIF — up to {MAX_FILES} files</p>
                 <Button className="mt-6 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-5 rounded-xl btn-press" type="button">
                   Select Images
                 </Button>
@@ -295,85 +357,129 @@ export default function HeroResizer() {
 
           {/* Controls */}
           <div className="lg:col-span-2 bg-white border border-stone-200 rounded-3xl p-5 md:p-7 shadow-sm">
-            <h3 className="font-display font-extrabold text-xl text-slate-900">Define new size</h3>
-            <p className="text-sm text-slate-500 mt-1">Choose how to shrink your image.</p>
+            {activeTool === 'shrink' ? (
+              <>
+                <h3 className="font-display font-extrabold text-xl text-slate-900">Define new size</h3>
+                <p className="text-sm text-slate-500 mt-1">Choose how to shrink your image.</p>
 
-            <Tabs value={mode} onValueChange={setMode} className="mt-5">
-              <TabsList className="grid grid-cols-2 bg-stone-100">
-                <TabsTrigger value="percentage" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">Percentage (%)</TabsTrigger>
-                <TabsTrigger value="dimensions" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">Dimensions (px)</TabsTrigger>
-              </TabsList>
+                <Tabs value={mode} onValueChange={setMode} className="mt-5">
+                  <TabsList className="grid grid-cols-2 bg-stone-100">
+                    <TabsTrigger value="percentage" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">Percentage (%)</TabsTrigger>
+                    <TabsTrigger value="dimensions" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">Dimensions (px)</TabsTrigger>
+                  </TabsList>
 
-              <TabsContent value="percentage" className="mt-5">
-                <p className="text-sm text-slate-700">Make image <span className="font-bold text-emerald-700 text-lg">{percentage}%</span> smaller of original.</p>
-                <Slider value={[percentage]} onValueChange={(v) => setPercentage(v[0])} min={5} max={100} step={5} className="mt-4" />
-                <div className="flex justify-between text-xs text-slate-400 mt-2"><span>5%</span><span>50%</span><span>100%</span></div>
-              </TabsContent>
+                  <TabsContent value="percentage" className="mt-5">
+                    <p className="text-sm text-slate-700">Make image <span className="font-bold text-emerald-700 text-lg">{percentage}%</span> smaller of original.</p>
+                    <Slider value={[percentage]} onValueChange={(v) => setPercentage(v[0])} min={5} max={100} step={5} className="mt-4" />
+                    <div className="flex justify-between text-xs text-slate-400 mt-2"><span>5%</span><span>50%</span><span>100%</span></div>
+                  </TabsContent>
 
-              <TabsContent value="dimensions" className="mt-5 space-y-3">
-                <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
-                  <div>
-                    <Label htmlFor="w" className="text-xs text-slate-500">width</Label>
-                    <Input id="w" type="number" value={width} onChange={(e) => onWidthChange(e.target.value)} placeholder="px" className="mt-1" />
+                  <TabsContent value="dimensions" className="mt-5 space-y-3">
+                    <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+                      <div>
+                        <Label htmlFor="w" className="text-xs text-slate-500">width</Label>
+                        <Input id="w" type="number" value={width} onChange={(e) => onWidthChange(e.target.value)} placeholder="px" className="mt-1" />
+                      </div>
+                      <span className="text-slate-400 pb-3">×</span>
+                      <div>
+                        <Label htmlFor="h" className="text-xs text-slate-500">height</Label>
+                        <Input id="h" type="number" value={height} onChange={(e) => onHeightChange(e.target.value)} placeholder="px" className="mt-1" />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between bg-stone-50 rounded-lg px-3 py-2.5">
+                      <span className="text-sm text-slate-700">Keep aspect ratio</span>
+                      <Switch checked={keepAspect} onCheckedChange={setKeepAspect} />
+                    </div>
+                  </TabsContent>
+                </Tabs>
+
+                <div className="mt-6">
+                  <p className="text-sm font-semibold text-slate-900">How to achieve the size</p>
+                  <div className="grid grid-cols-3 gap-2 mt-3">
+                    {[
+                      { key: 'stretch', label: 'Stretch', Icon: Maximize2 },
+                      { key: 'crop', label: 'Auto Crop', Icon: Crop },
+                      { key: 'fit', label: 'Fit', Icon: Square },
+                    ].map(({ key, label, Icon }) => (
+                      <button
+                        key={key}
+                        onClick={() => setFitMode(key)}
+                        className={`rounded-xl border px-3 py-3 text-xs font-semibold flex flex-col items-center gap-1.5 transition-all ${fitMode === key ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-stone-200 bg-white text-slate-600 hover:border-stone-400'}`}
+                      >
+                        <Icon className="w-4 h-4" />
+                        {label}
+                      </button>
+                    ))}
                   </div>
-                  <span className="text-slate-400 pb-3">×</span>
-                  <div>
-                    <Label htmlFor="h" className="text-xs text-slate-500">height</Label>
-                    <Input id="h" type="number" value={height} onChange={(e) => onHeightChange(e.target.value)} placeholder="px" className="mt-1" />
+                  {fitMode === 'fit' && (
+                    <div className="flex items-center gap-2 mt-3">
+                      <span className="text-xs text-slate-500">Background:</span>
+                      {['white', 'black', 'blur'].map((b) => (
+                        <button
+                          key={b}
+                          onClick={() => setFitBg(b)}
+                          className={`text-xs px-3 py-1 rounded-full border transition ${fitBg === b ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-stone-200 text-slate-600 hover:border-stone-400'}`}
+                        >
+                          {b}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <Button
+                  onClick={onShrink}
+                  disabled={processing || !files.length}
+                  className="w-full mt-6 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-6 text-base rounded-xl btn-press disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {processing ? (
+                    <span className="inline-flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> {progressLabel || 'Shrinking…'}</span>
+                  ) : (
+                    <span className="inline-flex items-center gap-2"><Scissors className="w-4 h-4" /> Shrink Images</span>
+                  )}
+                </Button>
+              </>
+            ) : (
+              <>
+                <h3 className="font-display font-extrabold text-xl text-slate-900">Remove background</h3>
+                <p className="text-sm text-slate-500 mt-1">An on-device AI model detects the subject and erases everything else.</p>
+
+                <div className="mt-5 space-y-3">
+                  <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-emerald-600 grid place-items-center shrink-0">
+                        <Eraser className="w-4 h-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-emerald-900">Transparent PNG output</p>
+                        <p className="text-xs text-emerald-800/80 mt-0.5">Perfect for product shots, profile pictures and design work.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl bg-stone-50 border border-stone-200 p-4">
+                    <p className="text-sm font-semibold text-slate-900">How it works</p>
+                    <ul className="text-xs text-slate-600 mt-2 space-y-1.5">
+                      <li>• First run downloads a ~30MB AI model (one time only)</li>
+                      <li>• Subsequent images process in a few seconds</li>
+                      <li>• Everything happens on your device — nothing uploaded</li>
+                    </ul>
                   </div>
                 </div>
-                <div className="flex items-center justify-between bg-stone-50 rounded-lg px-3 py-2.5">
-                  <span className="text-sm text-slate-700">Keep aspect ratio</span>
-                  <Switch checked={keepAspect} onCheckedChange={setKeepAspect} />
-                </div>
-              </TabsContent>
-            </Tabs>
 
-            <div className="mt-6">
-              <p className="text-sm font-semibold text-slate-900">How to achieve the size</p>
-              <div className="grid grid-cols-3 gap-2 mt-3">
-                {[
-                  { key: 'stretch', label: 'Stretch', Icon: Maximize2 },
-                  { key: 'crop', label: 'Auto Crop', Icon: Crop },
-                  { key: 'fit', label: 'Fit', Icon: Square },
-                ].map(({ key, label, Icon }) => (
-                  <button
-                    key={key}
-                    onClick={() => setFitMode(key)}
-                    className={`rounded-xl border px-3 py-3 text-xs font-semibold flex flex-col items-center gap-1.5 transition-all ${fitMode === key ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-stone-200 bg-white text-slate-600 hover:border-stone-400'}`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {label}
-                  </button>
-                ))}
-              </div>
-              {fitMode === 'fit' && (
-                <div className="flex items-center gap-2 mt-3">
-                  <span className="text-xs text-slate-500">Background:</span>
-                  {['white', 'black', 'blur'].map((b) => (
-                    <button
-                      key={b}
-                      onClick={() => setFitBg(b)}
-                      className={`text-xs px-3 py-1 rounded-full border transition ${fitBg === b ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-stone-200 text-slate-600 hover:border-stone-400'}`}
-                    >
-                      {b}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <Button
-              onClick={onShrink}
-              disabled={processing || !files.length}
-              className="w-full mt-6 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-6 text-base rounded-xl btn-press disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {processing ? (
-                <span className="inline-flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Shrinking…</span>
-              ) : (
-                <span className="inline-flex items-center gap-2"><Scissors className="w-4 h-4" /> Shrink Images</span>
-              )}
-            </Button>
+                <Button
+                  onClick={onRemoveBg}
+                  disabled={processing || !files.length}
+                  className="w-full mt-6 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-6 text-base rounded-xl btn-press disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {processing ? (
+                    <span className="inline-flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> {progressLabel || 'Processing…'}</span>
+                  ) : (
+                    <span className="inline-flex items-center gap-2"><Eraser className="w-4 h-4" /> Remove Background</span>
+                  )}
+                </Button>
+              </>
+            )}
 
             <div className="flex items-center gap-2 mt-4 text-xs text-slate-500">
               <Lock className="w-3.5 h-3.5" /> Your images never leave your device.
@@ -386,10 +492,12 @@ export default function HeroResizer() {
           <div className="mt-6 bg-white border border-stone-200 rounded-3xl p-5 md:p-7 shadow-sm">
             <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
               <div>
-                <h3 className="font-display font-extrabold text-xl text-slate-900">Your shrunk images</h3>
-                <p className="text-sm text-slate-500">Tap download on any image, or grab them all.</p>
+                <h3 className="font-display font-extrabold text-xl text-slate-900">
+                  {results[0]?.kind === 'removebg' ? 'Your transparent images' : 'Your shrunk images'}
+                </h3>
+                <p className="text-sm text-slate-500">Tap download on any image to save it.</p>
               </div>
-              <Button variant="outline" onClick={resetAll} className="border-stone-300">Shrink another</Button>
+              <Button variant="outline" onClick={resetAll} className="border-stone-300">Process another</Button>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {results.map((r) => {
@@ -401,8 +509,11 @@ export default function HeroResizer() {
                     <div className="p-4">
                       <p className="font-semibold text-sm text-slate-900 truncate">{r.name}</p>
                       <p className="text-xs text-slate-500 mt-0.5">{r.w}×{r.h} · {formatBytes(r.size)}</p>
-                      {savedPct > 0 && (
+                      {r.kind === 'shrink' && savedPct > 0 && (
                         <p className="text-xs text-emerald-700 font-semibold mt-1">↓ {savedPct}% smaller</p>
+                      )}
+                      {r.kind === 'removebg' && (
+                        <p className="text-xs text-emerald-700 font-semibold mt-1">Background removed · PNG</p>
                       )}
                       <a
                         href={r.url}
@@ -418,23 +529,6 @@ export default function HeroResizer() {
             </div>
           </div>
         )}
-
-        {/* Video Squeezer teaser */}
-        <div id="video" className="mt-10 rounded-3xl border border-stone-200 bg-white p-6 md:p-10 flex flex-col md:flex-row items-center gap-6">
-          <div className="w-16 h-16 rounded-2xl bg-amber-100 grid place-items-center shrink-0">
-            <ImageIcon className="w-8 h-8 text-amber-700" />
-          </div>
-          <div className="flex-1">
-            <h3 className="font-display text-2xl font-extrabold text-slate-900">Video Squeezer</h3>
-            <p className="text-slate-600 mt-1 max-w-2xl">Trim heavy video file sizes without sacrificing quality. No installs, no learning curve — just drop, squeeze, download.</p>
-            <ul className="mt-3 grid sm:grid-cols-3 gap-2 text-sm text-slate-700">
-              <li>✓ Crisp quality, small file size</li>
-              <li>✓ No installations required</li>
-              <li>✓ Friendly interface</li>
-            </ul>
-          </div>
-          <Button className="bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl px-6 py-5 btn-press">Squeeze now</Button>
-        </div>
       </div>
     </section>
   );

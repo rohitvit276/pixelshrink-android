@@ -1,10 +1,18 @@
 import React, { useState } from 'react';
 import { Menu, X, Sparkles } from 'lucide-react';
-import { Button } from './ui/button';
 import { NAV_LINKS } from '../mock';
 
-export default function Header() {
+export default function Header({ onToolSelect }) {
   const [open, setOpen] = useState(false);
+
+  const handleClick = (link) => {
+    if (link.tool && onToolSelect) onToolSelect(link.tool);
+    setOpen(false);
+    setTimeout(() => {
+      const el = document.getElementById('tool');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  };
 
   return (
     <header className="sticky top-0 z-40 bg-[#fafaf7]/85 backdrop-blur border-b border-stone-200">
@@ -21,22 +29,17 @@ export default function Header() {
 
         <nav className="hidden md:flex items-center gap-7">
           {NAV_LINKS.map((l) => (
-            <a
+            <button
               key={l.label}
-              href={l.href}
+              onClick={() => handleClick(l)}
               className="text-sm font-medium text-slate-700 hover:text-emerald-700 transition-colors"
             >
               {l.label}
-            </a>
+            </button>
           ))}
         </nav>
 
-        <div className="hidden md:flex items-center gap-3">
-          <Button variant="ghost" className="text-slate-700 hover:text-emerald-700 hover:bg-emerald-50">Sign in</Button>
-          <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold btn-press">
-            Unlock Pro
-          </Button>
-        </div>
+        <div className="hidden md:block w-9 h-9" />
 
         <button
           className="md:hidden p-2 rounded-lg hover:bg-stone-100"
@@ -49,11 +52,10 @@ export default function Header() {
 
       {open && (
         <div className="md:hidden border-t border-stone-200 bg-white">
-          <div className="px-4 py-4 flex flex-col gap-3">
+          <div className="px-4 py-4 flex flex-col gap-1">
             {NAV_LINKS.map((l) => (
-              <a key={l.label} href={l.href} className="text-sm font-medium text-slate-700 py-2">{l.label}</a>
+              <button key={l.label} onClick={() => handleClick(l)} className="text-left text-sm font-medium text-slate-700 py-2 hover:text-emerald-700">{l.label}</button>
             ))}
-            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white w-full">Unlock Pro</Button>
           </div>
         </div>
       )}
