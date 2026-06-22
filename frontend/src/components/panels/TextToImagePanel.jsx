@@ -167,13 +167,28 @@ export default function TextToImagePanel() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     setRendering(true);
+    if (process.env.NODE_ENV === 'development') {
+      console.debug('[Text Image] Download attempt:', canvas.width, 'x', canvas.height, state.format);
+    }
     try {
       const mime = state.format === 'jpg' ? 'image/jpeg' : 'image/png';
       const quality = state.format === 'jpg' ? 0.95 : undefined;
       canvas.toBlob(
         (blob) => {
-          if (!blob) { toast.error('Failed to generate image.'); setRendering(false); return; }
-          const url = URL.createObjectURL(blob);
+          let finalBlob = blob;
+          if (!finalBlob) {
+            try {
+              const dataUrl = canvas.toDataURL(mime, quality);
+              const byteStr = atob(dataUrl.split(',')[1]);
+              const ab = Uint8Array.from(byteStr, (c) => c.charCodeAt(0));
+              finalBlob = new Blob([ab], { type: mime });
+            } catch {
+              toast.error('Export failed: could not render canvas to image.');
+              setRendering(false);
+              return;
+            }
+          }
+          const url = URL.createObjectURL(finalBlob);
           const a = document.createElement('a');
           a.href = url;
           a.download = `text-image-${Date.now()}.${state.format}`;

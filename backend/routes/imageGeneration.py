@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 
 HF_API_BASE = "https://api-inference.huggingface.co/models"
-DEFAULT_MODEL = os.environ.get("HUGGING_FACE_MODEL", "stabilityai/stable-diffusion-3-medium-diffusers")
+DEFAULT_MODEL = os.environ.get("HUGGING_FACE_MODEL", "stabilityai/stable-diffusion-2-1")
 RATE_LIMIT = int(os.environ.get("AI_IMAGE_RATE_LIMIT", 5))
 RATE_LIMIT_WINDOW_SECONDS = int(os.environ.get("AI_IMAGE_RATE_LIMIT_WINDOW_SECONDS", 60))
 CACHE_TTL_SECONDS = int(os.environ.get("AI_IMAGE_CACHE_TTL_SECONDS", 600))
