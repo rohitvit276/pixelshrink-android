@@ -35,6 +35,7 @@ export default function AIImageGeneratorPanel() {
   const [errorMessage, setErrorMessage] = useState('');
   const [gallery, setGallery] = useState([]);
   const [lastPayload, setLastPayload] = useState(null);
+  const [canvasReady, setCanvasReady] = useState(false);
   const canvasRef = useRef(null);
   const progressIntervalRef = useRef(null);
 
@@ -74,7 +75,11 @@ export default function AIImageGeneratorPanel() {
   }, []);
 
   useEffect(() => {
-    if (!imageSrc || !canvasRef.current) return;
+    if (!imageSrc || !canvasRef.current) {
+      setCanvasReady(false);
+      return;
+    }
+    setCanvasReady(false);
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     const img = new window.Image();
@@ -87,11 +92,20 @@ export default function AIImageGeneratorPanel() {
       canvas.style.height = 'auto';
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0);
+      setCanvasReady(true);
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('[AI Image] Canvas rendered:', canvas.width, 'x', canvas.height);
+      }
+    };
+    img.onerror = () => {
+      if (!active) return;
+      toast.error('Failed to render generated image.');
     };
     img.src = imageSrc;
     return () => {
       active = false;
       img.onload = null;
+      img.onerror = null;
     };
   }, [imageSrc]);
 
@@ -118,6 +132,10 @@ export default function AIImageGeneratorPanel() {
     setProgress(10);
     setLastPayload(payload);
 
+    if (process.env.NODE_ENV === 'development') {
+      console.debug('[AI Image] Generation request:', { prompt: finalPrompt, style: payload.style, size: `${payload.width}x${payload.height}`, steps: payload.num_inference_steps });
+    }
+
     try {
       progressIntervalRef.current = window.setInterval(() => {
         setProgress((prev) => (prev >= 90 ? 90 : prev + 8));
@@ -135,7 +153,19 @@ export default function AIImageGeneratorPanel() {
       } catch {
         result = {};
       }
-      if (!response.ok) throw new Error(result?.detail || 'Failed to generate image.');
+
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('[AI Image] Response:', { status: response.status, hasBase64: !!result.imageBase64, cached: !!result.cached, mimeType: result.mimeType });
+      }
+
+      if (!response.ok) {
+        const detail = result?.detail || 'AI generation failed. Please try again.';
+        throw new Error(detail);
+      }
+
+      if (!result.imageBase64) {
+        throw new Error('AI generation returned no image data. The model may still be loading — please try again in a moment.');
+      }
 
       setImageData(result);
       const galleryItem = {
@@ -148,7 +178,12 @@ export default function AIImageGeneratorPanel() {
       setProgress(100);
       toast.success(result.cached ? 'Loaded from cache.' : 'Image generated successfully.');
     } catch (error) {
-      const message = error?.message || 'Something went wrong during generation.';
+      let message;
+      if (error instanceof TypeError) {
+        message = 'Network error: could not reach the server. Please check your connection.';
+      } else {
+        message = error?.message || 'Something went wrong during generation.';
+      }
       setErrorMessage(message);
       toast.error(message);
     } finally {
@@ -160,17 +195,32 @@ export default function AIImageGeneratorPanel() {
   };
 
   const handleDownload = () => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || !canvasReady) {
+      toast.info('Image is still rendering — please wait a moment and try again.');
+      return;
+    }
     const canvas = canvasRef.current;
     const mime = downloadFormat === 'jpg' ? 'image/jpeg' : 'image/png';
     const quality = downloadFormat === 'jpg' ? 0.92 : undefined;
 
+    if (process.env.NODE_ENV === 'development') {
+      console.debug('[AI Image] Download attempt:', canvas.width, 'x', canvas.height, mime);
+    }
+
     canvas.toBlob((blob) => {
-      if (!blob) {
-        toast.error('Unable to export image.');
-        return;
+      let finalBlob = blob;
+      if (!finalBlob) {
+        try {
+          const dataUrl = canvas.toDataURL(mime, quality);
+          const byteStr = atob(dataUrl.split(',')[1]);
+          const ab = Uint8Array.from(byteStr, (c) => c.charCodeAt(0));
+          finalBlob = new Blob([ab], { type: mime });
+        } catch {
+          toast.error('Export failed: could not create image file.');
+          return;
+        }
       }
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(finalBlob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `ai-image-${Date.now()}.${downloadFormat}`;
@@ -327,7 +377,7 @@ export default function AIImageGeneratorPanel() {
               <option value="png">PNG</option>
               <option value="jpg">JPG</option>
             </select>
-            <Button type="button" variant="outline" onClick={handleDownload} disabled={!imageSrc}>
+            <Button type="button" variant="outline" onClick={handleDownload} disabled={!imageSrc || !canvasReady}>
               <Download className="w-4 h-4 mr-1" /> Download
             </Button>
             <Button type="button" variant="outline" onClick={() => toast.info('Social sharing integration coming soon.')} disabled={!imageSrc}>
