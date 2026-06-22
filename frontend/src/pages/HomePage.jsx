@@ -61,6 +61,11 @@ const SEO_META = {
     description: 'Extract audio from videos and download as MP3. Works with MP4, MOV, WebM files. Perfect for podcasts and music clips.',
     keywords: 'video to mp3, extract audio, convert video to audio, mp3 converter, audio extractor',
   },
+  texttoimage: {
+    title: 'Text to Image Creator | Free Online Generator',
+    description: 'Create beautiful images from text. Customize fonts, colors, effects and download instantly. Perfect for social media graphics and quote images.',
+    keywords: 'text to image, image generator, create images, text graphics, quote maker, social media graphics',
+  },
 };
 
 export default function HomePage({ activeTool: routeTool }) {

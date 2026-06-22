@@ -1,5 +1,5 @@
 // Mock data for PixelShrink Studio (frontend-only)
-import { Scissors, Eraser, Crop as CropIcon, FileText, FileType2, Video, Music, Sparkles, Smile } from 'lucide-react';
+import { Scissors, Eraser, Crop as CropIcon, FileText, FileType2, Video, Music, Sparkles, Smile, Type } from 'lucide-react';
 
 export const TOOLS = [
   {
@@ -101,6 +101,17 @@ export const TOOLS = [
     seoDesc: 'Extract audio from videos and download as MP3. Works with MP4, MOV, WebM files.',
     seoKeywords: 'video to mp3, extract audio, convert video to audio, mp3 converter, audio extractor',
   },
+  {
+    key: 'texttoimage',
+    label: 'Text to Image',
+    short: 'Txt→Img',
+    icon: Type,
+    headline: 'Text to Image — create stunning graphics from text, free.',
+    sub: 'Turn any text into a beautiful image. Choose fonts, colors, effects and canvas sizes for social media.',
+    seoTitle: 'Text to Image Creator | Free Online Generator',
+    seoDesc: 'Create beautiful images from text. Customize fonts, colors, effects and download instantly.',
+    seoKeywords: 'text to image, image generator, create images, text graphics, quote maker',
+  },
 ];
 
 export const NAV_LINKS = TOOLS.map(({ key, label }) => ({ label, tool: key, href: '#tool' }));
@@ -108,7 +119,7 @@ export const NAV_LINKS = TOOLS.map(({ key, label }) => ({ label, tool: key, href
 export const FAQ_ITEMS = [
   {
     q: 'Are all the tools really free?',
-    a: 'Yes. Every tool — shrinking, background removal, cropping, filters, moustachify, document conversion, video compression and audio extraction — is completely free, with no sign-up required.',
+      a: 'Yes. Every tool — shrinking, background removal, cropping, filters, moustachify, text to image, document conversion, video compression and audio extraction — is completely free, with no sign-up required.',
   },
   {
     q: 'Do my files get uploaded to a server?',
@@ -150,4 +161,5 @@ export const USE_CASES = [
   'Sharing Word reports as polished PDF attachments',
   'Compressing videos for email, messaging and social uploads',
   'Extracting audio from videos for podcasts and clips',
+  'Creating text graphics and quote images for social media',
 ];

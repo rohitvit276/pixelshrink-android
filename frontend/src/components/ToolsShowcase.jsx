@@ -10,6 +10,7 @@ const TOOL_FEATURES = {
   word2pdf:      ['.docx → PDF', 'Clean layout', 'Instant conversion'],
   compressvideo: ['MP4, MOV, WebM', 'Browser-based', 'Up to ~500 MB'],
   video2mp3:     ['Extract audio', 'MP3 output', 'Any video format'],
+  texttoimage:   ['7+ font families', 'Social media presets', 'PNG & JPG export'],
 };
 
 export default function ToolsShowcase({ onToolSelect }) {
