@@ -25,7 +25,7 @@ export default function ToolSection({ activeTool, imageSrc, setUploadedImage }) 
   };
 
   return (
-    <section className="py-12 px-4 max-w-4xl mx-auto">
+    <section id="tool" className="py-12 px-4 max-w-4xl mx-auto">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone-100">
         {renderTool()}
       </div>
