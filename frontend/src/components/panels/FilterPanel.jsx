@@ -56,9 +56,19 @@ export default function FilterPanel({ imageSrc, setUploadedImage }) {
         />
       </div>
       <div className="space-y-4">
-        <label>Brightness ({filters.brightness}%)</label>
-        <Slider value={[filters.brightness]} min={0} max={200} onValueChange={(v) => setFilters(prev => ({...prev, brightness: v[0]}))} />
-        <Button onClick={handleDownload} className="w-full">Download Filtered Image</Button>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">Brightness ({filters.brightness}%)</label>
+          <Slider value={[filters.brightness]} min={0} max={200} onValueChange={(v) => setFilters(prev => ({...prev, brightness: v[0]}))} />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">Contrast ({filters.contrast}%)</label>
+          <Slider value={[filters.contrast]} min={0} max={200} onValueChange={(v) => setFilters(prev => ({...prev, contrast: v[0]}))} />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">Grayscale ({filters.grayscale}%)</label>
+          <Slider value={[filters.grayscale]} min={0} max={100} onValueChange={(v) => setFilters(prev => ({...prev, grayscale: v[0]}))} />
+        </div>
+        <Button onClick={handleDownload} className="w-full mt-6">Download Filtered Image</Button>
       </div>
     </div>
   );
