@@ -2,7 +2,7 @@
 
 This repository now includes a native Android app scaffold at:
 
-- `/home/runner/work/pixelshrink-android/pixelshrink-android/android`
+- `./android`
 
 The existing `frontend/` (React) and `backend/` (Python) folders are kept intact for future API/tool integration.
 
@@ -39,14 +39,14 @@ The existing `frontend/` (React) and `backend/` (Python) folders are kept intact
 
 1. Open Android Studio.
 2. Choose **Open**.
-3. Select `/home/runner/work/pixelshrink-android/pixelshrink-android/android`.
+3. Select `./android` (the `android` folder in this repository).
 4. Let Gradle sync complete.
 5. Run the `app` configuration on an emulator/device.
 
 ## CLI build (from repo root)
 
 ```bash
-cd /home/runner/work/pixelshrink-android/pixelshrink-android/android
+cd android
 ./gradlew assembleDebug
 ```
 
