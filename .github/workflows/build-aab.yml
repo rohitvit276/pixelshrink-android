@@ -3,7 +3,7 @@ name: Build Android AAB
 on:
   workflow_dispatch:
   push:
-    branches: [ "deployment" ]
+    branches: [ "deployment", "main" ]
     paths:
       - "android/**"
       - ".github/workflows/build-aab.yml"
