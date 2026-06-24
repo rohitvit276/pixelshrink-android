@@ -17,6 +17,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Explicitly using modern defaults - do not add buildToolsVersion here
     buildTypes {
         release {
             isMinifyEnabled = true
