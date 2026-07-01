@@ -41,7 +41,7 @@ android {
         applicationId = "com.pixelshrink.studio"
         minSdk = 24
         targetSdk = 35 // Updated to 35
-        versionCode = 2
+        versionCode = 3
         versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -84,6 +84,12 @@ android {
 }
 
 dependencies {
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    // On-device background removal (bundled model, works offline)
+    implementation("com.google.mlkit:segmentation-selfie:16.0.0-beta6")
+    // EXIF orientation handling for camera photos
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
     val composeBom = platform("androidx.compose:compose-bom:2024.09.00")
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
